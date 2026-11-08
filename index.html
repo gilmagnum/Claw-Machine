@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<script>/* arcAId theme: light by default, remembered per browser */try{var _t=localStorage.getItem("gmh:theme2");document.documentElement.setAttribute("data-arcade-theme",_t==="dark"?"dark":"light");}catch(e){document.documentElement.setAttribute("data-arcade-theme","light");}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>תפוס ת'פרס · arcAId</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&family=Secular+One&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall:#140d26; --wall-2:#211536;
+    --ink:#fdf7ff; --muted:#b9a8d6;
+    --pink:#ff2e93; --cyan:#22e0ff; --lime:#b6ff2e; --yellow:#ffd23f; --purple:#9b5cff;
+    --gold:#ffc43d; --gold-2:#ff8a1f;
+  }
+  *{ box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family:'Rubik','Segoe UI',Tahoma,sans-serif;
+    background:
+      radial-gradient(110% 50% at 15% -5%, rgba(255,46,147,0.16), transparent 60%),
+      radial-gradient(110% 50% at 85% -5%, rgba(34,224,255,0.14), transparent 60%),
+      linear-gradient(180deg, var(--wall) 0%, var(--wall-2) 100%);
+    color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh;
+    /* the shared arcAId bar is fixed to the bottom — keep the stack clear of it at every height */
+    padding:12px env(safe-area-inset-right) calc(60px + env(safe-area-inset-bottom,0px)) env(safe-area-inset-left);
+    overflow:hidden;
+  }
+  .stage{ width:100%; max-width:430px; display:flex; flex-direction:column; gap:8px; }
+
+  .scoreboard{
+    display:flex; justify-content:space-between; align-items:stretch;
+    background:linear-gradient(180deg,#2b1f47,#1b1430);
+    border:2px solid rgba(255,255,255,0.14); border-radius:14px; padding:8px 14px;
+    box-shadow:0 10px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+  .cell{ display:flex; flex-direction:column; align-items:center; gap:1px; min-width:54px; position:relative; }
+  .cell-label{ font-size:10.5px; color:var(--muted); font-weight:500; letter-spacing:.04em; }
+  .cell-value{ font-family:'Secular One',Rubik,sans-serif; font-size:24px; color:var(--yellow);
+               text-shadow:2px 2px 0 rgba(255,46,147,0.75); font-variant-numeric:tabular-nums; }
+  #comboNum{ color:var(--lime); text-shadow:2px 2px 0 rgba(0,0,0,.45); transition:transform .12s ease; }
+  #comboNum.cold{ color:var(--muted); text-shadow:none; }
+  #comboNum.hot{ color:var(--gold); text-shadow:2px 2px 0 rgba(255,46,147,.7); animation:comboPulse .8s ease-in-out infinite; }
+  #comboNum.bump{ transform:scale(1.28); }
+  @keyframes comboPulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.1);} }
+  #timer.low-time{ color:#ff5c7a; text-shadow:2px 2px 0 rgba(0,0,0,.5); animation:tPulse .6s ease-in-out infinite; }
+  @keyframes tPulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.13);} }
+  #timer.time-gain{ color:var(--lime); }
+  .gain-pop{ position:absolute; left:50%; top:-6px; transform:translateX(-50%); font-size:14px; font-weight:900;
+             color:var(--lime); white-space:nowrap; pointer-events:none; animation:gainPop 1.1s ease-out forwards; }
+  @keyframes gainPop{ 0%{ opacity:0; transform:translate(-50%,8px);} 20%{ opacity:1;} 100%{ opacity:0; transform:translate(-50%,-24px);} }
+
+  .streak-banner{ text-align:center; font-family:'Secular One',Rubik,sans-serif; font-size:14px;
+                  color:var(--gold); min-height:18px; text-shadow:1.5px 1.5px 0 rgba(0,0,0,.55);
+                  opacity:0; transform:translateY(-4px); transition:opacity .25s ease, transform .25s ease; }
+  .streak-banner.show{ opacity:1; transform:translateY(0); }
+
+  #cabinet{
+    position:relative; width:100%; aspect-ratio:1/1.33; border-radius:16px; overflow:hidden;
+    border:3px solid rgba(255,255,255,0.9);
+    box-shadow:0 16px 38px rgba(0,0,0,0.6), inset 0 0 40px rgba(0,0,0,0.45);
+    touch-action:none; background:#0d0919;
+  }
+  #cabinet canvas{ display:block; width:100%; height:100%; touch-action:none; }
+
+  #message{ position:absolute; top:58%; left:0; right:0; text-align:center;
+            font-family:'Secular One',Rubik,sans-serif; font-size:21px;
+            text-shadow:3px 3px 0 rgba(0,0,0,0.8); z-index:20; opacity:0; padding:0 6%;
+            transition:opacity .2s ease, transform .2s ease; transform:translateY(6px) scale(.95); }
+  #message.show{ opacity:1; transform:translateY(0) scale(1); }
+
+  .veil{ position:absolute; inset:0; z-index:30; display:flex; align-items:center; justify-content:center;
+         background:rgba(12,8,22,0.62); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); }
+  .veil.hidden{ display:none; }
+  .veil span{ font-family:'Secular One',Rubik,sans-serif; font-size:22px; color:var(--yellow); text-shadow:2px 2px 0 var(--pink); }
+  .countdown-num{ font-family:'Secular One',Rubik,sans-serif; font-size:66px; color:var(--yellow);
+                  text-shadow:4px 4px 0 var(--pink), 0 0 26px rgba(255,210,63,.5); animation:countPop .7s ease-out; }
+  @keyframes countPop{ 0%{ transform:scale(.4) rotate(-8deg); opacity:.3;} 40%{ transform:scale(1.15) rotate(3deg); opacity:1;} 100%{ transform:scale(1) rotate(0); opacity:1;} }
+  .countdown-num.hidden{ display:none; }
+  .start-btn{
+    font-family:'Secular One',Rubik,sans-serif;
+    background:linear-gradient(180deg,var(--yellow),var(--gold-2)); color:#2a0a2a; border:3px solid #2a0a2a;
+    padding:13px 28px; border-radius:12px; font-size:17px; cursor:pointer;
+    box-shadow:5px 5px 0 var(--pink); animation:sPulse 1.6s ease-in-out infinite;
+  }
+  .start-btn:active{ transform:translate(2px,2px); box-shadow:3px 3px 0 var(--pink); }
+  @keyframes sPulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.04);} }
+
+  .hint{ text-align:center; font-size:12.5px; color:var(--muted); background:rgba(255,255,255,0.05);
+         border:1px solid rgba(255,255,255,0.09); border-radius:11px; padding:7px 12px; line-height:1.5; }
+
+  .modal-veil{ position:fixed; inset:0; background:rgba(10,6,18,0.78); backdrop-filter:blur(3px);
+               display:flex; align-items:center; justify-content:center; z-index:50; opacity:0;
+               pointer-events:none; transition:opacity .25s ease; }
+  .modal-veil.show{ opacity:1; pointer-events:auto; }
+  .modal-card{ background:linear-gradient(180deg,#2b1f47,#1b1430); border:3px solid var(--pink);
+               border-radius:16px; padding:20px 18px; width:88%; max-width:330px; text-align:center;
+               max-height:88dvh; overflow-y:auto;
+               box-shadow:8px 8px 0 rgba(34,224,255,0.5); transform:translateY(10px) scale(.97); transition:transform .25s ease; }
+  .modal-veil.show .modal-card{ transform:translateY(0) scale(1); }
+  .modal-title{ font-family:'Secular One',Rubik,sans-serif; font-size:22px; color:var(--yellow);
+                text-shadow:2px 2px 0 var(--pink); margin-bottom:12px; }
+  .modal-stats{ display:flex; justify-content:space-around; margin-bottom:14px; }
+  .modal-stat b{ display:block; font-family:'Secular One',Rubik,sans-serif; font-size:24px; color:var(--ink); }
+  .modal-stat span{ font-size:12px; color:var(--muted); }
+
+  /* the round's own tally, read before the leaderboard panel slides over the card */
+  .tally{ background:rgba(0,0,0,0.26); border:1px solid rgba(255,255,255,0.10); border-radius:11px;
+          padding:8px 11px; margin-bottom:10px; text-align:right; }
+  .tally-head{ font-size:10.5px; letter-spacing:.06em; color:var(--muted); margin-bottom:5px; }
+  .tally-row{ display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+              font-size:12.5px; color:var(--ink); padding:2.5px 0; }
+  .tally-row + .tally-row{ border-top:1px solid rgba(255,255,255,0.06); }
+  .tally-row span{ color:var(--muted); }
+  .tally-row b{ font-family:'Secular One',Rubik,sans-serif; font-size:14px; color:var(--ink);
+                direction:ltr; unicode-bidi:isolate; white-space:nowrap; }
+  .tally-row.total b{ color:var(--yellow); }
+  .tally-row.off{ opacity:.45; }
+  @media (max-height:560px){
+    .modal-card{ padding:13px 14px; max-width:460px; }
+    .modal-title{ font-size:18px; margin-bottom:7px; }
+    .modal-stats{ margin-bottom:9px; }
+    .modal-stat b{ font-size:20px; }
+    .tallies{ display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:start; }
+    .tally{ padding:6px 9px; margin-bottom:8px; }
+    .tally-head{ margin-bottom:3px; }
+    .tally-row{ font-size:11px; padding:1.5px 0; }
+    .tally-row b{ font-size:12px; }
+  }
+  .modal-btn{ font-family:'Secular One',Rubik,sans-serif;
+              background:linear-gradient(180deg,var(--yellow),var(--gold-2)); color:#2a0a2a; border:3px solid #2a0a2a;
+              padding:10px 24px; border-radius:11px; font-size:15px; cursor:pointer; box-shadow:4px 4px 0 var(--cyan); }
+  .modal-btn:active{ transform:translate(2px,2px); box-shadow:2px 2px 0 var(--cyan); }
+  .hidden{ display:none !important; }
+
+  /* a 667px-tall phone cannot fit the full-size stack: shrink the cabinet to what is left over */
+  @media (max-height:790px){
+    #cabinet{ height:calc(100dvh - 232px); width:auto; aspect-ratio:1/1.33; align-self:center; max-width:100%; }
+    .hint{ font-size:11.5px; padding:6px 10px; }
+    .cell-value{ font-size:21px; }
+  }
+  @media (max-height:640px){
+    .hint{ display:none; }
+    .streak-banner{ min-height:0; font-size:12px; }
+    .cell-value{ font-size:19px; }
+    .scoreboard{ padding:4px 12px; }
+    #cabinet{ height:calc(100dvh - 186px); width:auto; aspect-ratio:1/1.33; align-self:center; max-width:100%; }
+  }
+  @media (max-height:430px){
+    #cabinet{ height:calc(100dvh - 158px); }
+    .cell-label{ display:none; }
+    .cell{ min-width:44px; }
+  }
+  /* phone in landscape: stand the panel beside the cabinet so it can use the whole height */
+  @media (orientation:landscape) and (max-height:560px){
+    body{ padding:8px 12px calc(58px + env(safe-area-inset-bottom,0px)); }
+    .stage{
+      display:grid; width:auto; max-width:none; gap:8px 16px;
+      grid-template-columns:minmax(150px,230px) auto;
+      grid-template-rows:1fr auto auto 1fr;
+      grid-template-areas:". cab" "score cab" "banner cab" ". cab";
+      align-items:center; justify-content:center;
+    }
+    .scoreboard{ grid-area:score; padding:6px 8px; }
+    .cell{ min-width:46px; }
+    .cell-label{ display:block; }
+    .cell-value{ font-size:21px; }
+    .streak-banner{ grid-area:banner; }
+    #cabinet{ grid-area:cab; height:calc(100dvh - 76px); width:auto; aspect-ratio:1/1.33; max-width:100%; }
+    .hint{ display:none; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .countdown-num, .start-btn{ animation:none; }
+  }
+
+/* ===== arcaide-theme: light chrome around the cabinet ===== */
+html[data-arcade-theme="light"]{ --ink:#241636; --muted:#6b5a86; }
+html[data-arcade-theme="light"] body{ background:#f2ecfb; color:#241636; }
+html[data-arcade-theme="light"] .scoreboard{ background:linear-gradient(180deg,#ffffff,#f4eefc);
+  border-color:rgba(40,20,70,.16); box-shadow:0 8px 20px rgba(40,20,70,.14) }
+html[data-arcade-theme="light"] .cell-value{ color:#b3186a; text-shadow:2px 2px 0 rgba(255,210,63,.9) }
+html[data-arcade-theme="light"] #comboNum{ color:#2f8f00; text-shadow:none }
+html[data-arcade-theme="light"] #comboNum.cold{ color:#8a7fa3 }
+html[data-arcade-theme="light"] #comboNum.hot{ color:#d98200; text-shadow:1.5px 1.5px 0 rgba(255,210,63,.9) }
+html[data-arcade-theme="light"] .streak-banner{ color:#b06b00; text-shadow:none }
+html[data-arcade-theme="light"] .hint{ background:rgba(40,20,70,.05); border-color:rgba(40,20,70,.1) }
+html[data-arcade-theme="light"] .modal-card{ background:linear-gradient(180deg,#ffffff,#f4eefc) }
+</style>
+<!-- arcaide-leaderboard -->
+<script src="https://gilmagnum.github.io/games/config.js?v=4"></script>
+<script src="https://gilmagnum.github.io/games/leaderboard.js?v=4"></script>
+<!-- arcaide-pwa: installable to the home screen -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<meta name="theme-color" content="#140d26">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="תפוס ת'פרס">
+</head>
+<body>
+
+  <div class="stage">
+    <div class="scoreboard">
+      <div class="cell"><div class="cell-label">ניקוד</div><div class="cell-value" id="score">0</div></div>
+      <div class="cell"><div class="cell-label">רצף</div><div class="cell-value" id="comboNum">0</div></div>
+      <div class="cell"><div class="cell-label">זמן</div><div class="cell-value" id="timer">30</div></div>
+      <div class="cell"><div class="cell-label">שיא</div><div class="cell-value" id="highscore">0</div></div>
+    </div>
+
+    <div class="streak-banner" id="streakBanner"></div>
+
+    <div id="cabinet">
+      <canvas id="cv" width="480" height="638"></canvas>
+      <div id="message">לחצו כדי להפיל את הטופר</div>
+      <div class="veil hidden" id="pauseVeil"><span>⏸ מושהה</span></div>
+      <div class="veil" id="startVeil">
+        <button class="start-btn" id="startBtn">▶ התחל משחק</button>
+        <div class="countdown-num hidden" id="countdownNum">3</div>
+      </div>
+    </div>
+
+    <div class="hint">🕹️ הטופר נע לבד — לוחצים בדיוק מעל הפרס. פרס קטן שווה יותר אבל חומק בקלות ⭐ · שלוש ברצף = טופר זהב 🏆 · ⏱️ זמן · 🧲 בלי החלקות · ↔️ טווח כפול · 🎁 הפתעה · 🌀 ערבוב · 👑 שווה הכי הרבה ונעלם מהר · 💣 להיזהר!</div>
+  </div>
+
+  <div class="modal-veil" id="overModal">
+    <div class="modal-card">
+      <div class="modal-title">נגמר הזמן</div>
+      <div class="modal-stats">
+        <div class="modal-stat"><b id="finalScore">0</b><span>ניקוד</span></div>
+        <div class="modal-stat"><b id="finalStreak">0</b><span>רצף שיא</span></div>
+      </div>
+
+      <div class="tallies">
+      <div class="tally">
+        <div class="tally-head">התפיסות</div>
+        <div class="tally-row"><span>פרסים שנאספו</span><b id="talWon">0</b></div>
+        <div class="tally-row"><span>חמקו מהטופר</span><b id="talSlip">0</b></div>
+        <div class="tally-row"><span>החטאות</span><b id="talMiss">0</b></div>
+        <div class="tally-row total"><span>נתפסו מתוך ניסיונות</span><b id="talAcc">0 / 0</b></div>
+        <div class="tally-row"><span>אחוז הצלחה</span><b id="talPct">0%</b></div>
+      </div>
+
+      <div class="tally">
+        <div class="tally-head">שלל</div>
+        <div class="tally-row" id="rowBest"><span>הפרס היקר ביותר</span><b id="talBest">0</b></div>
+        <div class="tally-row" id="rowSecs"><span>⏱️ שניות שנוספו</span><b id="talSecs">0</b></div>
+        <div class="tally-row" id="rowBomb"><span>💣 פצצות</span><b id="talBomb">0</b></div>
+        <div class="tally-row" id="rowLost"><span>💣 שניות שאבדו</span><b id="talLost">0</b></div>
+        <div class="tally-row" id="rowCrown"><span>👑 פרסי זהב</span><b id="talCrown">0</b></div>
+        <div class="tally-row" id="rowGold"><span>🏆 טופר זהב</span><b id="talGold">0</b></div>
+        <div class="tally-row" id="rowMag"><span>🧲 מגנט</span><b id="talMag">0</b></div>
+        <div class="tally-row" id="rowWide"><span>↔️ טופר רחב</span><b id="talWide">0</b></div>
+        <div class="tally-row" id="rowGift"><span>🎁 הפתעות</span><b id="talGift">0</b></div>
+        <div class="tally-row" id="rowMix"><span>🌀 ערבובים</span><b id="talMix">0</b></div>
+      </div>
+      </div>
+
+      <button class="modal-btn" id="playAgainBtn">עוד סיבוב</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- cabinet ----------
+  const W = 480, H = 638;
+  const ROUND_SECONDS = 30;
+
+  const GLASS_X0 = 26, GLASS_X1 = W - 26;     // inside of the glass
+  const GLASS_Y0 = 64, GLASS_Y1 = H - 58;
+  const BIN_X0   = GLASS_X0 + 14, BIN_X1 = GLASS_X1 - 14;
+  const FLOOR_Y  = GLASS_Y1 - 16;             // where prizes come to rest
+  const RAIL_Y   = GLASS_Y0 + 26;             // the bar the claw hangs from
+  const CLAW_TOP = RAIL_Y + 22;               // claw's parked height
+
+  const SWEEP_X0 = BIN_X0 + 26, SWEEP_X1 = BIN_X1 - 26;
+  const CHUTE_X  = GLASS_X0 + 34;             // the hole the prize is dropped into
+  const CHUTE_Y  = GLASS_Y0 + 70;
+
+  // the claw travels on its own; the only input is WHEN to drop it
+  const SWEEP_V0 = 132, SWEEP_RAMP = 3.4, SWEEP_MAX = 250;   // px/s, grows through the round
+  const DROP_V   = 1450, LIFT_V = 1050, CARRY_V = 1050;
+  const CLOSE_MS = 0.17, RELEASE_MS = 0.13;
+  // how far below the claw's head a held prize rides — the descent aims for exactly this, so a
+  // prize does not jump the moment the fingers shut on it
+  const HOLD_DY  = 26;
+
+  // how far off-centre the claw may be and still touch the prize at all
+  const REACH      = 30;
+  const REACH_GOLD = 44;          // the golden claw forgives more
+  const FIRM       = 0.34;        // within this share of the reach the grip never slips
+
+  const GOLD_AT = 3, GOLD_GRABS = 3;          // three in a row lights the golden claw
+  const CLOCK_SECONDS = 3, CLOCK_MAX = 6;     // the stopwatch prize, capped per round
+  const BOMB_SECONDS = 3;                     // the one thing in the bin you do not want
+  const MAGNET_GRABS = 3;                     // 🧲 the grip cannot slip
+  const WIDE_GRABS   = 3;                     // ↔️ the claw reaches twice as wide
+  const GIFT_SECONDS = 5;                     // 🎁 when the surprise turns out to be time
+  const CROWN_LIFE   = 6.5;                   // 👑 how long the big one stays before it is gone
+  const REACH_WIDE   = 60;
+  const KEEP_PRIZES = 56;                     // a full machine: the heap is high, so the claw
+                                              // has only a short way to travel before it bites
+  const FIXED_STEP = 1/240;
+
+  // smaller is worth more, and rounder slips more — that is the whole risk/reward.
+  // each kind also gets its own plate colour: at phone size the colour is what you read, not the
+  // emoji's detail, so value is legible at a glance
+  const KINDS = [
+    { id:'bear',    emoji:'🧸', r:23, pts:1, slip:0.10, w:24, col:'#8f6bff', col2:'#5a3bc4' },
+    { id:'duck',    emoji:'🦆', r:20, pts:2, slip:0.16, w:20, col:'#3fd0ff', col2:'#1b7fb5' },
+    { id:'ball',    emoji:'⚽', r:17, pts:3, slip:0.34, w:17, col:'#b6ff2e', col2:'#5f9c00' },
+    { id:'star',    emoji:'⭐', r:15, pts:5, slip:0.44, w:11, col:'#ff9a1f', col2:'#a84a00' },
+    { id:'gem',     emoji:'💎', r:13, pts:8, slip:0.54, w:7,  col:'#ff2e93', col2:'#9c0053' },
+    { id:'clock',   emoji:'⏱️', r:17, pts:0, slip:0.30, w:10, col:'#ffffff', col2:'#8a8a8a', clock:true },
+    // churns the whole heap: the small, valuable prizes sink out of reach, and this is how you
+    // bring them back up without waiting for the machine to refill
+    { id:'shuffle', emoji:'🌀', r:16, pts:2, slip:0.30, w:7,  col:'#22e0ff', col2:'#0a5f8a', shuffle:true },
+    // the only thing in the bin worth avoiding. Without it a blind tap almost always hits
+    // something in a full machine, and aiming is worth far less than it should be.
+    { id:'bomb',    emoji:'💣', r:18, pts:0, slip:0.20, w:9,  col:'#6b6b78', col2:'#16161c', bomb:true },
+    { id:'magnet',  emoji:'🧲', r:17, pts:1, slip:0.25, w:6,  col:'#ff5c7a', col2:'#8c0022', magnet:true },
+    { id:'wide',    emoji:'↔️', r:17, pts:1, slip:0.25, w:6,  col:'#b6ff2e', col2:'#3f7000', wide:true },
+    { id:'gift',    emoji:'🎁', r:18, pts:1, slip:0.28, w:5,  col:'#ff2e93', col2:'#6d0040', gift:true },
+    // worth more than anything else and gone in a few seconds — the greed prize
+    { id:'crown',   emoji:'👑', r:14, pts:15, slip:0.62, w:3, col:'#ffd23f', col2:'#8a5a00', crown:true }
+  ];
+  const KIND_BY_ID = {};
+  KINDS.forEach(k => { KIND_BY_ID[k.id] = k; });
+
+  let storedHigh = 0, storedBest = 0;
+  try {
+    storedHigh = parseInt(localStorage.getItem('claw_highscore') || '0', 10) || 0;
+    storedBest = parseInt(localStorage.getItem('claw_beststreak') || '0', 10) || 0;
+  } catch(e){}
+
+  const S = {
+    score:0, timeLeft:ROUND_SECONDS, combo:0, bestStreak:storedBest, high:storedHigh,
+    paused:false, over:false, started:false, locked:true, timeUp:false, muted:false,
+    tAnim:0, acc:0, timerHandle:null, againTimer:null,
+    prizes:[], pops:[], sparks:[],
+    claw:{ x:(SWEEP_X0+SWEEP_X1)/2, y:CLAW_TOP, dir:1, phase:'sweep', t:0, open:1, targetY:0, held:null, slipAt:-1 },
+    goldGrabs:0, goldFresh:false, clocksTaken:0,
+    magnetGrabs:0, magnetFresh:false, wideGrabs:0, wideFresh:false,
+    // the round's own tally, shown on the game-over card before the leaderboard covers it
+    roundBest:0, tries:0, won:0, slipped:0, missed:0, bestPrize:0, golds:0, wonSecs:0, shuffles:0,
+    bombs:0, crowns:0, gifts:0, magnets:0, wides:0, lostSecs:0
+  };
+
+  const cv = document.getElementById('cv');
+  const g  = cv.getContext('2d');
+  const el = id => document.getElementById(id);
+  const scoreEl = el('score'), timerEl = el('timer'), highEl = el('highscore');
+  const comboEl = el('comboNum'), banner = el('streakBanner'), message = el('message');
+  const pauseVeil = el('pauseVeil'), startVeil = el('startVeil'), startBtn = el('startBtn');
+  const countNum = el('countdownNum'), overModal = el('overModal');
+  const finalScoreEl = el('finalScore'), finalStreakEl = el('finalStreak');
+  const playAgainBtn = el('playAgainBtn');
+
+  highEl.textContent = S.high;
+
+  // ---------- audio ----------
+  let actx = null;
+  function ctx(){ if (!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+  function tone(f,dur,type,vol,delay){
+    if (S.muted) return;
+    const c = ctx(); if (!c) return;
+    const t0 = c.currentTime + (delay||0);
+    const o = c.createOscillator(), gn = c.createGain();
+    o.type = type||'sine'; o.frequency.setValueAtTime(f,t0);
+    gn.gain.setValueAtTime(vol||0.2,t0);
+    gn.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+    o.connect(gn); gn.connect(c.destination); o.start(t0); o.stop(t0+dur+0.02);
+  }
+  function noise(dur,vol,freq,type){
+    if (S.muted) return;
+    const c = ctx(); if (!c) return;
+    const n = Math.floor(c.sampleRate*dur);
+    const buf = c.createBuffer(1,n,c.sampleRate), d = buf.getChannelData(0);
+    for (let i=0;i<n;i++) d[i] = (Math.random()*2-1)*(1-i/n);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const flt = c.createBiquadFilter(); flt.type = type||'bandpass'; flt.frequency.value = freq||1200;
+    const gn = c.createGain(); gn.gain.value = vol||0.3;
+    src.connect(flt); flt.connect(gn); gn.connect(c.destination); src.start();
+  }
+  const sfx = {
+    motor(){ tone(140,0.08,'square',0.07); },
+    drop(){ tone(320,0.09,'square',0.14); noise(0.06,0.1,900,'bandpass'); },
+    clamp(){ tone(220,0.06,'square',0.2); tone(160,0.1,'square',0.16,0.05); },
+    grab(){ tone(523,0.1,'triangle',0.2); tone(784,0.14,'triangle',0.2,0.07); },
+    slip(){ tone(380,0.12,'sawtooth',0.16); tone(240,0.18,'sawtooth',0.13,0.09); },
+    whiff(){ noise(0.12,0.12,500,'lowpass'); tone(150,0.14,'sine',0.1); },
+    cash(){ [659,880,1174,1568].forEach((f,i)=>tone(f,0.13,'triangle',0.2,i*0.05)); noise(0.2,0.1,3000,'highpass'); },
+    shuffle(){ [1200,900,700,900,1200].forEach((f,i)=>tone(f,0.09,'sine',0.17,i*0.055)); noise(0.35,0.14,1400,'bandpass'); },
+    boom(){ tone(90,0.42,'sawtooth',0.26); tone(55,0.5,'square',0.2,0.04); noise(0.45,0.3,300,'lowpass'); },
+    magnet(){ [440,660,880].forEach((f,i)=>tone(f,0.14,'sine',0.2,i*0.06)); noise(0.18,0.08,2200,'highpass'); },
+    wide(){ [520,700,520,700].forEach((f,i)=>tone(f,0.1,'triangle',0.18,i*0.05)); },
+    crown(){ [784,988,1319,1568,2093].forEach((f,i)=>tone(f,0.18,'triangle',0.22,i*0.06)); noise(0.3,0.12,3200,'highpass'); },
+    gold(){ [660,880,1180,1480].forEach((f,i)=>tone(f,0.12,'triangle',0.2,i*0.06)); },
+    timeWin(){ [784,1046,1318,1568,2093].forEach((f,i)=>tone(f,0.16,'triangle',0.2,i*0.055)); noise(0.3,0.14,3000,'highpass'); },
+    tick(){ tone(920,0.05,'square',0.14); },
+    buzzer(){ tone(170,0.55,'square',0.22); noise(0.55,0.2,600,'lowpass'); }
+  };
+  function vibrate(p){ if (navigator.vibrate) try{ navigator.vibrate(p); }catch(e){} }
+
+  // ---------- helpers ----------
+  const goldOn   = () => S.goldGrabs > 0;
+  const magnetOn = () => S.magnetGrabs > 0;
+  const wideOn   = () => S.wideGrabs > 0;
+  const reach    = () => wideOn() ? REACH_WIDE : (goldOn() ? REACH_GOLD : REACH);
+  const multiply = () => goldOn() ? 2 : 1;
+  const sweepSpeed = () => Math.min(SWEEP_MAX, SWEEP_V0 + (ROUND_SECONDS - S.timeLeft) * SWEEP_RAMP);
+  const pick = a => a[Math.floor(Math.random()*a.length)];
+  const WIN_CALLS  = ['יש! 🎉', 'נתפס! 🙌', 'ישר למטה 🎯'];
+  const SLIP_CALLS = ['חמק ברגע האחרון 😫', 'כמעט בידיים', 'נשמט! 😩'];
+  const MISS_CALLS = ['על ריק 😅', 'קצת לידו', 'פספוס'];
+
+  function renderTimer(){
+    const t = Math.max(0, Math.ceil(S.timeLeft));
+    timerEl.textContent = t;
+    timerEl.classList.toggle('low-time', t <= 5 && t > 0);
+  }
+  function flashTime(sec){
+    const cell = timerEl.parentElement;
+    if (cell){
+      const pop = document.createElement('div');
+      pop.className = 'gain-pop'; pop.textContent = 'עוד ' + sec + ' שניות';
+      cell.appendChild(pop); setTimeout(()=>pop.remove(),1200);
+    }
+    timerEl.classList.add('time-gain');
+    setTimeout(()=>timerEl.classList.remove('time-gain'),1000);
+  }
+  function showMessage(text,color){
+    message.textContent = text;
+    message.style.color = color || 'var(--ink)';
+    message.classList.add('show');
+  }
+  let shownCombo = -1;
+  function renderCombo(){
+    if (S.combo !== shownCombo){
+      comboEl.textContent = S.combo;
+      if (S.combo > 0){
+        comboEl.classList.add('bump');
+        setTimeout(()=>comboEl.classList.remove('bump'), 140);
+      }
+      shownCombo = S.combo;
+    }
+    comboEl.classList.toggle('cold', S.combo === 0);
+    comboEl.classList.toggle('hot', S.combo >= GOLD_AT);
+  }
+  function updateBanner(){
+    renderCombo();
+    const live = [];
+    if (goldOn())   live.push('🏆 כפול ×' + S.goldGrabs);
+    if (magnetOn()) live.push('🧲 בלי החלקות ×' + S.magnetGrabs);
+    if (wideOn())   live.push('↔️ טווח כפול ×' + S.wideGrabs);
+    if (live.length){ banner.textContent = live.join('  ·  '); banner.classList.add('show'); }
+    else if (S.combo >= 2){ banner.textContent = 'רצף ' + S.combo; banner.classList.add('show'); }
+    else { banner.classList.remove('show'); banner.textContent = ''; }
+  }
+
+  // ---------- round flow ----------
+  // time won on the buzzer has to restart the clock, or the round ends with seconds still showing
+  function addTime(sec){
+    S.timeLeft = Math.min(99, S.timeLeft + sec);
+    if (S.timeUp && !S.over && S.timeLeft > 0){
+      S.timeUp = false;
+      if (S.timerHandle) clearInterval(S.timerHandle);
+      S.started = false;
+      startTimer();
+    }
+    renderTimer();
+  }
+  const clawBusy = () => S.claw.phase !== 'sweep';
+
+  function startTimer(){
+    if (S.started || S.over) return;
+    S.started = true;
+    S.timerHandle = setInterval(() => {
+      if (S.paused) return;
+      S.timeLeft -= 1;
+      if (S.timeLeft <= 5 && S.timeLeft > 0) sfx.tick();
+      if (S.timeLeft <= 0){ S.timeLeft = 0; clearInterval(S.timerHandle); S.timeUp = true; }
+      renderTimer();
+      if (S.timeUp && !clawBusy() && !S.over) endRound();
+    }, 1000);
+  }
+
+  function runCountdown(){
+    if (window.Leaderboard && Leaderboard.cancelPending) Leaderboard.cancelPending();
+    let n = 3;
+    countNum.textContent = n; sfx.tick();
+    const step = () => {
+      if (S.paused){ setTimeout(step,200); return; }
+      n -= 1;
+      if (n > 0){
+        countNum.textContent = n;
+        countNum.style.animation='none'; void countNum.offsetWidth; countNum.style.animation='';
+        sfx.tick(); setTimeout(step,700);
+      } else {
+        startVeil.classList.add('hidden');
+        S.locked = false;
+        showMessage('קדימה! 🕹️','var(--yellow)');
+        setTimeout(()=>message.classList.remove('show'),900);
+        startTimer();
+      }
+    };
+    setTimeout(step,700);
+  }
+
+  function restart(){
+    setPaused(false);
+    if (window.Arcade) Arcade.setPaused(false);
+    if (S.timerHandle) clearInterval(S.timerHandle);
+    if (S.againTimer){ clearTimeout(S.againTimer); S.againTimer = null; }
+    Object.assign(S,{
+      score:0, timeLeft:ROUND_SECONDS, combo:0,
+      over:false, started:false, locked:true, timeUp:false,
+      tAnim:0, acc:0, prizes:[], pops:[], sparks:[],
+      claw:{ x:(SWEEP_X0+SWEEP_X1)/2, y:CLAW_TOP, dir:1, phase:'sweep', t:0, open:1, targetY:0, held:null, slipAt:-1 },
+      goldGrabs:0, goldFresh:false, clocksTaken:0,
+      magnetGrabs:0, magnetFresh:false, wideGrabs:0, wideFresh:false,
+      roundBest:0, tries:0, won:0, slipped:0, missed:0, bestPrize:0, golds:0, wonSecs:0, shuffles:0,
+      bombs:0, crowns:0, gifts:0, magnets:0, wides:0, lostSecs:0
+    });
+    fillBin(true);
+    scoreEl.textContent = 0; renderTimer(); updateBanner();
+    message.classList.remove('show');
+    overModal.classList.remove('show');
+    startVeil.classList.remove('hidden');
+    countNum.classList.remove('hidden');
+    startBtn.style.display = 'none';
+    runCountdown();
+  }
+
+  // the round's own numbers, laid out on the card
+  function renderTally(){
+    const pct = S.tries ? Math.round(S.won/S.tries*100) : 0;
+    el('talWon').textContent  = S.won;
+    el('talSlip').textContent = S.slipped;
+    el('talMiss').textContent = S.missed;
+    el('talAcc').textContent  = S.won + ' / ' + S.tries;
+    el('talPct').textContent  = pct + '%';
+    // every value stays a bare number: a Hebrew unit inside an LTR cell gets reordered by bidi
+    const rows = [
+      ['rowBest',  'talBest',  S.bestPrize],
+      ['rowSecs',  'talSecs',  S.wonSecs, '+'],
+      ['rowBomb',  'talBomb',  S.bombs],
+      ['rowLost',  'talLost',  S.lostSecs, '-'],
+      ['rowCrown', 'talCrown', S.crowns],
+      ['rowGold',  'talGold',  S.golds],
+      ['rowMag',   'talMag',   S.magnets],
+      ['rowWide',  'talWide',  S.wides],
+      ['rowGift',  'talGift',  S.gifts],
+      ['rowMix',   'talMix',   S.shuffles]
+    ];
+    for (const [rowId, valId, n, sign] of rows){
+      el(valId).textContent = n > 0 && sign ? sign + n : String(n);
+      el(rowId).classList.toggle('off', n === 0);
+    }
+  }
+
+  function endRound(){
+    S.over = true;
+    if (S.timerHandle) clearInterval(S.timerHandle);
+    finalScoreEl.textContent = S.score;
+    finalStreakEl.textContent = S.roundBest;   // this round's longest run, not the all-time one
+    if (S.bestStreak > storedBest){
+      try{ localStorage.setItem('claw_beststreak', S.bestStreak); }catch(e){}
+      storedBest = S.bestStreak;
+    }
+    renderTally();
+    overModal.classList.add('show');
+    sfx.buzzer(); vibrate([20,40,20,40,60]);
+
+    // restarting cancels an unsaved score, so the button is not on the card during the window
+    // where that would cost a record. with no leaderboard it has to stay, or the card is a dead end.
+    if (S.againTimer){ clearTimeout(S.againTimer); S.againTimer = null; }
+    const SUMMARY_MS = 4200;
+    if (window.Leaderboard){
+      playAgainBtn.classList.add('hidden');
+      (Leaderboard.gameOverIn
+        ? Leaderboard.gameOverIn(SUMMARY_MS, S.score, { streak:S.roundBest })
+        : setTimeout(function(){ Leaderboard.gameOver(S.score, { streak:S.roundBest }); }, SUMMARY_MS));
+      S.againTimer = setTimeout(function(){
+        S.againTimer = null;
+        playAgainBtn.classList.remove('hidden');
+      }, SUMMARY_MS + 500);
+    } else {
+      playAgainBtn.classList.remove('hidden');
+    }
+  }
+
+  // ---------- the pile ----------
+  function randomKind(){
+    let total = 0;
+    for (const k of KINDS){
+      if (k.clock && S.clocksTaken + countClocks() >= CLOCK_MAX) continue;
+      total += k.w;
+    }
+    let roll = Math.random()*total;
+    for (const k of KINDS){
+      if (k.clock && S.clocksTaken + countClocks() >= CLOCK_MAX) continue;
+      roll -= k.w;
+      if (roll <= 0) return k;
+    }
+    return KINDS[0];
+  }
+  function countClocks(){
+    let n = 0;
+    for (const p of S.prizes) if (p.kind.clock) n++;
+    return n;
+  }
+  function spawnPrize(settled){
+    const k = randomKind();
+    // the crown is on a timer: it is the only prize that can leave on its own
+    const x = BIN_X0 + k.r + Math.random()*(BIN_X1 - BIN_X0 - k.r*2);
+    S.prizes.push({
+      kind:k, x:x,
+      y: settled ? FLOOR_Y - k.r - Math.random()*90 : GLASS_Y0 - k.r - Math.random()*50,
+      vx:0, vy:0, spin:(Math.random()-0.5)*0.5, held:false, gone:false,
+      life: k.crown ? CROWN_LIFE : 0
+    });
+  }
+  function fillBin(settle){
+    while (S.prizes.length < KEEP_PRIZES) spawnPrize(true);
+    if (settle) for (let i=0;i<300;i++) stepPrizes(FIXED_STEP*2);
+  }
+  // one new prize per resolved grab, until the bin is back to full. The crown can also leave
+  // on its own, so the machine has to be able to make up more than the one you just took.
+  function topUp(){
+    if (S.prizes.length >= KEEP_PRIZES) return;
+    spawnPrize(false);
+  }
+
+  const GRAV = 1500, REST = 0.18, FRICTION = 0.86;
+  const DRAG = 0.992;          // sideways drag, so a sliding prize comes to a stop
+  function stepPrizes(h){
+    for (const p of S.prizes){
+      if (p.held) continue;
+      p.vy += GRAV*h;
+      p.vx *= DRAG;
+      p.x  += p.vx*h;
+      p.y  += p.vy*h;
+      p.spin += p.vx*h*0.02;
+      const r = p.kind.r;
+      if (p.x < BIN_X0 + r){ p.x = BIN_X0 + r; p.vx = Math.abs(p.vx)*REST; }
+      if (p.x > BIN_X1 - r){ p.x = BIN_X1 - r; p.vx = -Math.abs(p.vx)*REST; }
+      // the churn throws prizes upward; keep them under the glass, not out of the cabinet
+      if (p.y < GLASS_Y0 + r && p.vy < 0){ p.y = GLASS_Y0 + r; p.vy = Math.abs(p.vy)*REST; }
+      if (p.y > FLOOR_Y - r){
+        p.y = FLOOR_Y - r;
+        p.vy = Math.abs(p.vy) > 60 ? -Math.abs(p.vy)*REST : 0;
+        p.vx *= FRICTION;
+      }
+    }
+    // relaxation passes keep the pile from collapsing into itself. a deep, full bin needs
+    // more of them: with three, prizes at the bottom stayed several pixels inside each other
+    for (let pass=0; pass<6; pass++){
+      for (let i=0;i<S.prizes.length;i++){
+        const a = S.prizes[i]; if (a.held) continue;
+        for (let j=i+1;j<S.prizes.length;j++){
+          const b = S.prizes[j];
+          const minD = a.kind.r + b.kind.r;
+          let dx = b.x - a.x, dy = b.y - a.y;
+          // a full machine makes this loop the hot path, so reject on one axis before the
+          // square root: most pairs in a wide bin are nowhere near each other
+          if (dx > minD || dx < -minD || dy > minD || dy < -minD) continue;
+          let d = Math.hypot(dx, dy);
+          if (d >= minD) continue;
+          if (d < 0.001){ dx = (Math.random()-0.5); dy = -1; d = 1; }
+          const nx = dx/d, ny = dy/d, push = (minD - d);
+          if (b.held){ a.x -= nx*push; a.y -= ny*push; continue; }
+          const ha = push*0.5, hb = push*0.5;
+          a.x -= nx*ha; a.y -= ny*ha;
+          b.x += nx*hb; b.y += ny*hb;
+          const rel = (b.vx-a.vx)*nx + (b.vy-a.vy)*ny;
+          if (rel < 0){
+            // soak most of the closing speed instead of exchanging it: a tightly packed heap
+            // trades the same energy back and forth for ever and never comes to rest
+            a.vx += nx*rel*0.22; a.vy += ny*rel*0.22;
+            b.vx -= nx*rel*0.22; b.vy -= ny*rel*0.22;
+          }
+        }
+      }
+      for (const p of S.prizes){
+        if (p.held) continue;
+        const r = p.kind.r;
+        if (p.x < BIN_X0 + r) p.x = BIN_X0 + r;
+        if (p.x > BIN_X1 - r) p.x = BIN_X1 - r;
+        if (p.y > FLOOR_Y - r) p.y = FLOOR_Y - r;
+      }
+    }
+  }
+
+  // ---------- the claw ----------
+  // the prize the claw would close on: the highest one whose centre is inside the reach.
+  // a prize still dropping in from above the glass is not in play yet — it would otherwise be
+  // picked as "highest" and the claw would try to descend to a point above its own parked height
+  function candidate(x){
+    let best = null;
+    for (const p of S.prizes){
+      if (p.held || p.gone) continue;
+      if (p.y < GLASS_Y0 + 10) continue;
+      if (Math.abs(p.x - x) > reach()) continue;
+      if (!best || p.y < best.y) best = p;
+    }
+    return best;
+  }
+
+  function dropClaw(){
+    if (S.locked || S.paused || S.over || S.timeUp) return;
+    if (clawBusy()) return;
+    const c = S.claw;
+    const target = candidate(c.x);
+    c.aim = target || null;
+    c.targetY = target ? target.y - HOLD_DY : FLOOR_Y - HOLD_DY - 8;
+    c.targetY = Math.max(CLAW_TOP + 24, c.targetY);   // never ask it to drop upwards
+    c.phase = 'drop'; c.t = 0;
+    S.tries += 1;
+    sfx.drop(); vibrate(10);
+    startTimer();
+    message.classList.remove('show');
+  }
+
+  function closeOnPrize(){
+    const c = S.claw;
+    const p = candidate(c.x);
+    if (!p){
+      c.held = null; c.slipAt = -1;
+      return;
+    }
+    const off = Math.abs(p.x - c.x) / reach();      // 0 dead centre, 1 at the very edge
+    p.held = true; p.vx = 0; p.vy = 0;
+    c.held = p;
+    if (magnetOn() || off <= FIRM){
+      c.slipAt = -1;                                 // centred, or the magnet has it: coming up
+    } else {
+      // past the firm zone the grip is a gamble, and a slippery prize is a worse one
+      const chance = ((off - FIRM) / (1 - FIRM)) * (0.45 + p.kind.slip);
+      c.slipAt = Math.random() < chance ? 0.25 + Math.random()*0.5 : -1;
+    }
+  }
+
+  function dropHeld(){
+    const c = S.claw;
+    if (!c.held) return;
+    const p = c.held;
+    p.held = false;
+    p.vx = (Math.random()-0.5)*90;
+    p.vy = 40;
+    c.held = null;
+  }
+
+  // The churn. Physics alone cannot shuffle a packed bin: a prize at the bottom is pinned by
+  // everything above it, and the separation passes push it straight back down — measured at a
+  // 0.90 rank correlation before and after, i.e. the heap came back in the same order.
+  // So re-deal it instead. Every prize gets a new slot in a loose cloud above the floor, in
+  // random order, and rains back down; whoever lands last ends up on top.
+  function shufflePile(){
+    const loose = [];
+    for (const q of S.prizes) if (!q.held && !q.gone) loose.push(q);
+    if (!loose.length) return;
+    for (let i = loose.length - 1; i > 0; i--){          // a real permutation, not a hop
+      const j = Math.floor(Math.random()*(i+1));
+      const t = loose[i]; loose[i] = loose[j]; loose[j] = t;
+    }
+    const PER_ROW = 7, ROW_H = 50;
+    const lane = (BIN_X1 - BIN_X0) / PER_ROW;
+    const rows = Math.ceil(loose.length / PER_ROW);
+    const top  = Math.max(GLASS_Y0 + 40, FLOOR_Y - 40 - rows*ROW_H);
+    loose.forEach((q, i) => {
+      const row = Math.floor(i / PER_ROW), col = i % PER_ROW;
+      const x = BIN_X0 + lane*col + lane*0.5 + (Math.random()-0.5)*lane*0.4;
+      q.x = Math.max(BIN_X0 + q.kind.r, Math.min(BIN_X1 - q.kind.r, x));
+      q.y = top + row*ROW_H + (Math.random()-0.5)*8;
+      q.vx = (Math.random()-0.5)*130;
+      q.vy = -90 - Math.random()*130;                    // a little lift, so it reads as a toss
+      q.spin += (Math.random()-0.5)*3;
+    });
+    for (let i=0;i<26;i++)
+      S.sparks.push({ x:BIN_X0 + Math.random()*(BIN_X1-BIN_X0), y:FLOOR_Y - Math.random()*120,
+                      vx:(Math.random()-0.5)*260, vy:-120-Math.random()*300, t:0,
+                      col: i%2 ? '#22e0ff' : '#ffffff' });
+  }
+
+  // light one of the powers; shared by the prize that grants it and by the surprise box
+  function lightPower(which, quiet){
+    if (which === 'magnet'){
+      S.magnetGrabs = MAGNET_GRABS; S.magnetFresh = true; S.magnets += 1;
+      if (!quiet) showMessage('🧲 מגנט — ' + MAGNET_GRABS + ' תפיסות בלי החלקות!', 'var(--pink)');
+      sfx.magnet();
+    } else if (which === 'wide'){
+      S.wideGrabs = WIDE_GRABS; S.wideFresh = true; S.wides += 1;
+      if (!quiet) showMessage('↔️ טופר רחב — ' + WIDE_GRABS + ' תפיסות בטווח כפול!', 'var(--lime)');
+      sfx.wide();
+    } else if (which === 'gold'){
+      S.goldGrabs = GOLD_GRABS; S.goldFresh = true; S.golds += 1;
+      if (!quiet) showMessage('🏆 טופר זהב — ' + GOLD_GRABS + ' תפיסות ניקוד כפול!', 'var(--gold)');
+      sfx.gold();
+    } else if (which === 'time'){
+      S.wonSecs += GIFT_SECONDS;
+      addTime(GIFT_SECONDS); flashTime(GIFT_SECONDS);
+      if (!quiet) showMessage('⏱️ עוד ' + GIFT_SECONDS + ' שניות!', 'var(--lime)');
+      sfx.timeWin();
+    } else if (which === 'shuffle'){
+      S.shuffles += 1; shufflePile();
+      if (!quiet) showMessage('🌀 ערבוב! הפרסים מתהפכים', 'var(--cyan)');
+      sfx.shuffle();
+    }
+    vibrate([12,40,12,40]);
+    updateBanner();
+  }
+
+  function collect(){
+    const c = S.claw, p = c.held;
+    if (!p) return;
+    p.gone = true; p.held = false;
+    const i = S.prizes.indexOf(p);
+    if (i >= 0) S.prizes.splice(i, 1);
+    c.held = null;
+
+    // the bomb is not a prize: it does not count as a catch, it ends the run, and it takes
+    // time off the clock. This is what makes tapping without looking cost something.
+    if (p.kind.bomb){
+      S.bombs += 1;
+      S.combo = 0;
+      S.goldGrabs = 0; S.magnetGrabs = 0; S.wideGrabs = 0;
+      const lost = Math.min(BOMB_SECONDS, S.timeLeft);
+      S.lostSecs += lost;
+      S.timeLeft = Math.max(0, S.timeLeft - BOMB_SECONDS);
+      renderTimer();
+      if (S.timeLeft <= 0) S.timeUp = true;
+      S.pops.push({ t:0, x:CHUTE_X, y:CHUTE_Y + 40, text:'-' + lost + ' שניות', col:'#ff5c7a' });
+      for (let i=0;i<18;i++)
+        S.sparks.push({ x:CHUTE_X, y:CHUTE_Y + 30, vx:(Math.random()-0.5)*300, vy:-Math.random()*300, t:0,
+                        col: i%2 ? '#ff5c7a' : '#ffffff' });
+      showMessage('💣 פצצה! הרצף נגמר', 'var(--pink)');
+      sfx.boom(); vibrate([40,60,40]);
+      updateBanner();
+      setTimeout(()=>{ if (!S.over) message.classList.remove('show'); }, 850);
+      return;
+    }
+
+    S.won += 1;
+    S.combo += 1;
+    if (S.combo > S.roundBest)  S.roundBest  = S.combo;
+    if (S.combo > S.bestStreak) S.bestStreak = S.combo;
+
+    if (p.kind.clock){
+      S.clocksTaken += 1;
+      S.wonSecs += CLOCK_SECONDS;
+      addTime(CLOCK_SECONDS);
+      flashTime(CLOCK_SECONDS);
+      S.pops.push({ t:0, x:CHUTE_X, y:CHUTE_Y + 40, text:'+' + CLOCK_SECONDS + ' שניות', col:'#b6ff2e' });
+      showMessage('⏱️ עוד ' + CLOCK_SECONDS + ' שניות!', 'var(--lime)');
+      sfx.timeWin(); vibrate([14,40,14,40,24]);
+    } else {
+      const pts = p.kind.pts * multiply();
+      S.score += pts;
+      if (pts > S.bestPrize) S.bestPrize = pts;
+      scoreEl.textContent = S.score;
+      S.pops.push({ t:0, x:CHUTE_X, y:CHUTE_Y + 40, text:'+' + pts, col: multiply() > 1 ? '#ffc43d' : '#22e0ff' });
+      if (p.kind.shuffle){
+        S.shuffles += 1;
+        shufflePile();
+        showMessage('🌀 ערבוב! הפרסים מתהפכים', 'var(--cyan)');
+        sfx.shuffle(); vibrate([10,30,10,30,10]);
+      } else if (p.kind.magnet){
+        lightPower('magnet');
+      } else if (p.kind.wide){
+        lightPower('wide');
+      } else if (p.kind.gift){
+        S.gifts += 1;
+        const won = pick(['magnet','wide','gold','time','shuffle']);
+        showMessage('🎁 הפתעה!', 'var(--pink)');
+        sfx.cash();
+        setTimeout(()=>{ if (!S.over) lightPower(won); }, 420);
+      } else if (p.kind.crown){
+        S.crowns += 1;
+        showMessage('👑 פרס הזהב! ' + pts + ' נק׳' + (multiply() > 1 ? ' כפול 🏆' : ''), 'var(--gold)');
+        sfx.crown(); vibrate([18,40,18,40,30]);
+      } else {
+        showMessage(pick(WIN_CALLS) + ' ' + p.kind.emoji + ' ' + pts + ' נק׳' + (multiply() > 1 ? ' כפול 🏆' : ''),
+                    multiply() > 1 ? 'var(--gold)' : 'var(--cyan)');
+        sfx.cash(); vibrate([10,30,10]);
+      }
+    }
+    for (let i=0;i<14;i++)
+      S.sparks.push({ x:CHUTE_X, y:CHUTE_Y + 30, vx:(Math.random()-0.5)*220, vy:-Math.random()*260, t:0,
+                      col: i%2 ? '#ffd23f' : '#22e0ff' });
+
+    // a run of three lights the golden claw: wider reach and double points for the next few
+    if (S.combo % GOLD_AT === 0){
+      const again = goldOn();
+      S.goldGrabs = GOLD_GRABS; S.goldFresh = true;
+      S.golds += 1;
+      sfx.gold(); vibrate([12,40,12,40]);
+      showMessage('🏆 ' + (again ? 'עוד ' : 'טופר זהב — ') + GOLD_GRABS + ' תפיסות ניקוד כפול!', 'var(--gold)');
+    }
+    if (S.score > S.high){
+      S.high = S.score; highEl.textContent = S.high;
+      try{ localStorage.setItem('claw_highscore', S.high); }catch(e){}
+    }
+    updateBanner();
+    setTimeout(()=>{ if (!S.over) message.classList.remove('show'); }, 850);
+  }
+
+  function failed(kind){
+    S.combo = 0;
+    if (kind === 'slip'){ S.slipped += 1; showMessage(pick(SLIP_CALLS),'var(--pink)'); sfx.slip(); }
+    else { S.missed += 1; showMessage(pick(MISS_CALLS),'var(--muted)'); sfx.whiff(); }
+    vibrate(12);
+    updateBanner();
+    setTimeout(()=>{ if (!S.over) message.classList.remove('show'); }, 800);
+  }
+
+  // one grab spends one golden-claw charge, whatever its outcome
+  function afterGrab(){
+    if (S.goldGrabs > 0){
+      if (S.goldFresh) S.goldFresh = false;
+      else { S.goldGrabs -= 1; updateBanner(); }
+    }
+    if (S.magnetGrabs > 0){
+      if (S.magnetFresh) S.magnetFresh = false;
+      else { S.magnetGrabs -= 1; updateBanner(); }
+    }
+    if (S.wideGrabs > 0){
+      if (S.wideFresh) S.wideFresh = false;
+      else { S.wideGrabs -= 1; updateBanner(); }
+    }
+    topUp();
+    if (S.timeUp && !S.over) endRound();
+  }
+
+  function stepClaw(h){
+    const c = S.claw;
+    if (c.phase === 'sweep'){
+      c.x += c.dir * sweepSpeed() * h;
+      if (c.x < SWEEP_X0){ c.x = SWEEP_X0; c.dir = 1; }
+      if (c.x > SWEEP_X1){ c.x = SWEEP_X1; c.dir = -1; }
+      c.open = 1;
+      return;
+    }
+    c.t += h;
+    if (c.phase === 'drop'){
+      c.y += DROP_V * h;
+      if (c.y >= c.targetY){ c.y = c.targetY; c.phase = 'close'; c.t = 0; sfx.clamp(); }
+    }
+    else if (c.phase === 'close'){
+      c.open = Math.max(0, 1 - c.t/CLOSE_MS);
+      if (c.t >= CLOSE_MS){
+        closeOnPrize();
+        c.phase = 'lift'; c.t = 0;
+        if (!c.held) failed('miss');
+      }
+    }
+    else if (c.phase === 'lift'){
+      c.y -= LIFT_V * h;
+      const travelled = (c.targetY - c.y) / Math.max(1, c.targetY - CLAW_TOP);
+      if (c.held){
+        c.held.x = c.x; c.held.y = c.y + HOLD_DY;
+        if (c.slipAt >= 0 && travelled >= c.slipAt){
+          dropHeld(); c.slipAt = -1; failed('slip');
+        }
+      }
+      if (c.y <= CLAW_TOP){
+        c.y = CLAW_TOP;
+        if (c.held){ c.phase = 'carry'; c.t = 0; }
+        else { c.phase = 'sweep'; c.open = 1; afterGrab(); }
+      }
+    }
+    else if (c.phase === 'carry'){
+      const dx = CHUTE_X - c.x;
+      const step = CARRY_V * h;
+      if (Math.abs(dx) <= step){ c.x = CHUTE_X; c.phase = 'release'; c.t = 0; }
+      else c.x += Math.sign(dx) * step;
+      if (c.held){ c.held.x = c.x; c.held.y = c.y + HOLD_DY; }
+    }
+    else if (c.phase === 'release'){
+      c.open = Math.min(1, c.t/RELEASE_MS);
+      if (c.held){ c.held.x = c.x; c.held.y = c.y + HOLD_DY; }
+      if (c.t >= RELEASE_MS){
+        collect();
+        c.phase = 'sweep'; c.open = 1;
+        afterGrab();
+      }
+    }
+  }
+
+  // ---------- input ----------
+  function onDown(e){
+    if (!actx) ctx();
+    e.preventDefault();
+    dropClaw();
+  }
+  cv.addEventListener('pointerdown', onDown);
+  window.addEventListener('keydown', function(e){
+    if (e.code === 'Space' || e.code === 'ArrowDown'){ e.preventDefault(); dropClaw(); }
+  });
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min(0.045, (now-last)/1000); last = now;
+    if (!S.paused && !S.over) update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  function update(dt){
+    S.tAnim += dt;
+    S.acc += dt;
+    let guard = 0;
+    while (S.acc >= FIXED_STEP && guard++ < 90){
+      S.acc -= FIXED_STEP;
+      if (!S.locked) stepClaw(FIXED_STEP);
+      stepPrizes(FIXED_STEP);
+    }
+    // the crown is the one prize that leaves on its own if you do not take it
+    for (let i=S.prizes.length-1;i>=0;i--){
+      const q = S.prizes[i];
+      if (!q.life || q.held) continue;
+      q.life -= dt;
+      if (q.life <= 0){
+        S.prizes.splice(i,1);
+        for (let k=0;k<12;k++)
+          S.sparks.push({ x:q.x, y:q.y, vx:(Math.random()-0.5)*200, vy:-Math.random()*200, t:0,
+                          col: k%2 ? '#ffd23f' : '#ffffff' });
+      }
+    }
+    for (let i=S.pops.length-1;i>=0;i--){ S.pops[i].t += dt; if (S.pops[i].t > 1.1) S.pops.splice(i,1); }
+    for (let i=S.sparks.length-1;i>=0;i--){
+      const s = S.sparks[i]; s.t += dt;
+      s.x += s.vx*dt; s.y += s.vy*dt; s.vy += 700*dt;
+      if (s.t > 0.8) S.sparks.splice(i,1);
+    }
+  }
+
+  // ---------- drawing ----------
+  function roundRect(x,y,w,h,r){
+    g.beginPath();
+    if (g.roundRect) g.roundRect(x,y,w,h,r);
+    else { g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+  }
+
+  function drawCabinet(){
+    // the room behind the glass
+    const back = g.createLinearGradient(0,GLASS_Y0,0,GLASS_Y1);
+    back.addColorStop(0,'#2a1b4a'); back.addColorStop(0.55,'#1d1236'); back.addColorStop(1,'#120b22');
+    g.fillStyle = back; g.fillRect(GLASS_X0,GLASS_Y0,GLASS_X1-GLASS_X0,GLASS_Y1-GLASS_Y0);
+
+    // neon stripes on the back wall
+    g.save();
+    g.globalAlpha = 0.15;
+    for (let i=0;i<7;i++){
+      g.fillStyle = i%2 ? '#ff2e93' : '#22e0ff';
+      g.fillRect(GLASS_X0, GLASS_Y0 + 40 + i*62, GLASS_X1-GLASS_X0, 10);
+    }
+    g.restore();
+
+    // the chute the prizes are dropped into
+    g.save();
+    g.fillStyle = '#0a0716';
+    roundRect(CHUTE_X-30, CHUTE_Y-12, 60, 44, 10); g.fill();
+    g.strokeStyle = '#ffd23f'; g.lineWidth = 3;
+    roundRect(CHUTE_X-30, CHUTE_Y-12, 60, 44, 10); g.stroke();
+    g.fillStyle = 'rgba(255,210,63,0.16)';
+    g.beginPath(); g.ellipse(CHUTE_X, CHUTE_Y+6, 24, 9, 0, 0, Math.PI*2); g.fill();
+    g.fillStyle = '#ffd23f';
+    g.font = "700 11px 'Secular One', Rubik, sans-serif";
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    if ('direction' in g) g.direction = 'ltr';
+    g.fillText('PRIZE', CHUTE_X, CHUTE_Y + 42);
+    g.restore();
+
+    // the bin floor
+    const fl = g.createLinearGradient(0,FLOOR_Y-6,0,GLASS_Y1);
+    fl.addColorStop(0,'#3a2a5c'); fl.addColorStop(1,'#1a1030');
+    g.fillStyle = fl; g.fillRect(BIN_X0-8, FLOOR_Y-4, (BIN_X1-BIN_X0)+16, GLASS_Y1-FLOOR_Y+4);
+    g.strokeStyle = 'rgba(255,210,63,0.5)'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(BIN_X0-8, FLOOR_Y-3); g.lineTo(BIN_X1+8, FLOOR_Y-3); g.stroke();
+  }
+
+  function drawRail(){
+    g.save();
+    g.strokeStyle = '#5a4a80'; g.lineWidth = 7; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(GLASS_X0+10, RAIL_Y); g.lineTo(GLASS_X1-10, RAIL_Y); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(GLASS_X0+10, RAIL_Y-2); g.lineTo(GLASS_X1-10, RAIL_Y-2); g.stroke();
+    g.restore();
+  }
+
+  function drawClaw(){
+    const c = S.claw, gold = goldOn(), mag = magnetOn(), wid = wideOn();
+    const armCol  = mag ? '#ff5c7a' : wid ? '#b6ff2e' : gold ? '#ffc43d' : '#cfd6ff';
+    const edgeCol = mag ? '#5c0018' : wid ? '#2c5200' : gold ? '#7a4a00' : '#2a2447';
+
+    // the cable
+    g.save();
+    g.strokeStyle = 'rgba(220,226,255,0.65)'; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(c.x, RAIL_Y); g.lineTo(c.x, c.y - 10); g.stroke();
+
+    // the carriage on the rail
+    g.fillStyle = '#4a3d72'; g.strokeStyle = edgeCol; g.lineWidth = 2.5;
+    roundRect(c.x-16, RAIL_Y-9, 32, 18, 5); g.fill(); g.stroke();
+
+    if (gold || mag || wid){
+      g.shadowColor = mag ? 'rgba(255,92,122,0.9)' : wid ? 'rgba(182,255,46,0.9)' : 'rgba(255,196,61,0.9)';
+      g.shadowBlur = 16;
+    }
+
+    // the head
+    g.fillStyle = armCol; g.strokeStyle = edgeCol; g.lineWidth = 3;
+    roundRect(c.x-16, c.y-13, 32, 22, 7); g.fill(); g.stroke();
+
+    // two fingers that swing shut. stroked, not filled: a filled quadratic sliver came out
+    // one pixel wide and the claw looked like it had no fingers at all
+    const spread = 13 + c.open*16;
+    for (const side of [-1, 1]){
+      const bx = c.x + side*9,      by = c.y + 8;
+      const kx = c.x + side*spread, ky = c.y + 23;      // the knuckle
+      const tx = c.x + side*(spread*0.72), ty = c.y + 38;
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      g.beginPath(); g.moveTo(bx,by); g.lineTo(kx,ky); g.lineTo(tx,ty);
+      g.strokeStyle = edgeCol; g.lineWidth = 9; g.stroke();
+      g.strokeStyle = armCol;  g.lineWidth = 5; g.stroke();
+      // the tip
+      g.beginPath(); g.arc(tx, ty, 3.6, 0, Math.PI*2);
+      g.fillStyle = armCol; g.fill();
+      g.strokeStyle = edgeCol; g.lineWidth = 2; g.stroke();
+    }
+    g.restore();
+
+    // where it would land — only while it is sweeping, so the player can aim
+    if (c.phase === 'sweep' && !S.locked && !S.over){
+      const r = reach();
+      g.save();
+      g.globalAlpha = 0.5 + Math.sin(S.tAnim*7)*0.18;
+      g.strokeStyle = armCol;
+      g.lineWidth = 2; g.setLineDash([5,7]);
+      g.beginPath(); g.moveTo(c.x, c.y+34); g.lineTo(c.x, FLOOR_Y-4); g.stroke();
+      g.setLineDash([]);
+      g.globalAlpha = 0.85;
+      g.beginPath(); g.moveTo(c.x-r, FLOOR_Y-2); g.lineTo(c.x+r, FLOOR_Y-2); g.stroke();
+      g.beginPath(); g.moveTo(c.x-r, FLOOR_Y-8); g.lineTo(c.x-r, FLOOR_Y+2); g.stroke();
+      g.beginPath(); g.moveTo(c.x+r, FLOOR_Y-8); g.lineTo(c.x+r, FLOOR_Y+2); g.stroke();
+      g.restore();
+    }
+  }
+
+  function drawPrizes(){
+    g.save();
+    // a prize dropped in from above starts off-screen and must not be painted over the marquee
+    g.beginPath();
+    g.rect(GLASS_X0, GLASS_Y0, GLASS_X1-GLASS_X0, GLASS_Y1-GLASS_Y0);
+    g.clip();
+    for (const p of S.prizes){
+      const k = p.kind, r = k.r;
+      g.save();
+      g.translate(p.x, p.y);
+      g.rotate(Math.sin(p.spin)*0.22);
+      // a solid plate in the kind's colour. a translucent disc let the dark cabinet show
+      // through and the pile turned into a row of grey blobs
+      if (k.crown && p.life > 0 && p.life < 2.2){
+        g.globalAlpha = 0.45 + 0.55*Math.abs(Math.sin(S.tAnim*9));   // about to vanish
+      }
+      const grd = g.createRadialGradient(-r*0.35, -r*0.4, r*0.12, 0, 0, r);
+      grd.addColorStop(0, '#ffffff');
+      grd.addColorStop(0.35, k.col);
+      grd.addColorStop(1, k.col2);
+      g.fillStyle = grd;
+      g.beginPath(); g.arc(0, 0, r, 0, Math.PI*2); g.fill();
+      g.strokeStyle = 'rgba(14,8,26,0.85)'; g.lineWidth = 2.5;
+      g.beginPath(); g.arc(0, 0, r, 0, Math.PI*2); g.stroke();
+      if (k.clock){
+        g.strokeStyle = '#b6ff2e'; g.lineWidth = 2.5;
+        g.beginPath(); g.arc(0, 0, r - 1.5, 0, Math.PI*2); g.stroke();
+      }
+      g.font = (r*1.45) + "px 'Noto Color Emoji','Apple Color Emoji','Segoe UI Emoji',sans-serif";
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(k.emoji, 0, 1);
+      // a highlight so the pile reads as rounded objects under the glass
+      g.fillStyle = 'rgba(255,255,255,0.4)';
+      g.beginPath(); g.ellipse(-r*0.36, -r*0.46, r*0.3, r*0.17, -0.5, 0, Math.PI*2); g.fill();
+      g.restore();
+    }
+    g.restore();
+  }
+
+  function drawGlass(){
+    // frame
+    g.save();
+    g.strokeStyle = '#ff2e93'; g.lineWidth = 6;
+    roundRect(GLASS_X0-6, GLASS_Y0-6, (GLASS_X1-GLASS_X0)+12, (GLASS_Y1-GLASS_Y0)+12, 14); g.stroke();
+    g.strokeStyle = '#22e0ff'; g.lineWidth = 2;
+    roundRect(GLASS_X0-2, GLASS_Y0-2, (GLASS_X1-GLASS_X0)+4, (GLASS_Y1-GLASS_Y0)+4, 11); g.stroke();
+    // a sheen across the glass
+    const sheen = g.createLinearGradient(GLASS_X0, GLASS_Y0, GLASS_X1, GLASS_Y1);
+    sheen.addColorStop(0,'rgba(255,255,255,0.10)');
+    sheen.addColorStop(0.35,'rgba(255,255,255,0.02)');
+    sheen.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle = sheen;
+    g.fillRect(GLASS_X0, GLASS_Y0, GLASS_X1-GLASS_X0, GLASS_Y1-GLASS_Y0);
+    g.restore();
+  }
+
+  function drawMarquee(){
+    g.save();
+    const m = g.createLinearGradient(0,6,0,GLASS_Y0-10);
+    m.addColorStop(0,'#ff2e93'); m.addColorStop(1,'#9b5cff');
+    g.fillStyle = m;
+    roundRect(GLASS_X0-6, 8, (GLASS_X1-GLASS_X0)+12, GLASS_Y0-20, 10); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 2;
+    roundRect(GLASS_X0-6, 8, (GLASS_X1-GLASS_X0)+12, GLASS_Y0-20, 10); g.stroke();
+    g.fillStyle = '#fff6c9';
+    g.font = "700 22px 'Secular One', Rubik, sans-serif";
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    if ('direction' in g) g.direction = 'ltr';
+    g.fillText('CLAW MACHINE', W/2, 8 + (GLASS_Y0-20)/2);
+    // bulbs round the marquee
+    for (let i=0;i<12;i++){
+      const bx = GLASS_X0 + 6 + i*((GLASS_X1-GLASS_X0-12)/11);
+      const on = (Math.floor(S.tAnim*4) + i) % 3 !== 0;
+      g.fillStyle = on ? '#ffd23f' : 'rgba(255,210,63,0.25)';
+      g.beginPath(); g.arc(bx, 14, 3.2, 0, Math.PI*2); g.fill();
+      g.beginPath(); g.arc(bx, GLASS_Y0-16, 3.2, 0, Math.PI*2); g.fill();
+    }
+    g.restore();
+  }
+
+  function drawEffects(){
+    for (const s of S.sparks){
+      g.save();
+      g.globalAlpha = Math.max(0, 1 - s.t/0.8);
+      g.fillStyle = s.col;
+      g.beginPath(); g.arc(s.x, s.y, 3.2*(1-s.t/0.8)+0.8, 0, Math.PI*2); g.fill();
+      g.restore();
+    }
+    for (const p of S.pops){
+      const f = Math.min(1, p.t/1.1);
+      g.save();
+      g.globalAlpha = f < 0.7 ? 1 : Math.max(0, (1-f)/0.3);
+      g.translate(p.x, p.y - f*52);
+      g.font = "700 20px 'Secular One', Rubik, sans-serif";
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      if ('direction' in g) g.direction = 'ltr';
+      g.lineJoin = 'round'; g.lineWidth = 6; g.strokeStyle = 'rgba(8,4,16,0.92)';
+      g.strokeText(p.text, 0, 0);
+      g.fillStyle = p.col; g.fillText(p.text, 0, 0);
+      g.restore();
+    }
+  }
+
+  function draw(){
+    g.clearRect(0,0,W,H);
+    drawMarquee();
+    drawCabinet();
+    drawRail();
+    drawPrizes();
+    drawClaw();
+    drawGlass();
+    drawEffects();
+  }
+
+  // ---------- pause / arcAId bar ----------
+  function setPaused(on){
+    S.paused = !!on;
+    pauseVeil.classList.toggle('hidden', !S.paused);
+  }
+  let autoPaused = false;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){
+      if (!S.paused){ autoPaused = true; setPaused(true); if (window.Arcade) Arcade.setPaused(true); }
+    } else if (autoPaused){
+      autoPaused = false; setPaused(false); if (window.Arcade) Arcade.setPaused(false);
+    }
+  });
+
+  playAgainBtn.addEventListener('click', restart);
+  startBtn.addEventListener('click', () => {
+    ctx();
+    startBtn.style.display = 'none';
+    countNum.classList.remove('hidden');
+    runCountdown();
+  }, { once:true });
+
+  if (window.Leaderboard){
+    Leaderboard.init({ game:'claw-machine', title:'תפוס ת\'פרס', scoreLabel:'נקודות' });
+  }
+  if (window.Arcade){
+    Arcade.controls({
+      onPause:   function(){ setPaused(true); },
+      onResume:  function(){ setPaused(false); },
+      onRestart: function(){ setPaused(false); restart(); },
+      onMute:    function(m){ S.muted = m; },
+      theme: true
+    });
+  }
+
+  fillBin(true);
+  renderTimer();
+  updateBanner();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
