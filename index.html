@@ -286,6 +286,8 @@ html[data-arcade-theme="light"] .modal-card{ background:linear-gradient(180deg,#
   const SWEEP_X0 = BIN_X0 + 26, SWEEP_X1 = BIN_X1 - 26;
   const CHUTE_X  = GLASS_X0 + 34;             // the hole the prize is dropped into
   const CHUTE_Y  = GLASS_Y0 + 70;
+  // where a mid-round refill drops in: the far right, as far from the chute as the bin allows
+  const REFILL_X0 = BIN_X1 - 110;
 
   // the claw travels on its own; the only input is WHEN to drop it
   const SWEEP_V0 = 132, SWEEP_RAMP = 3.4, SWEEP_MAX = 250;   // px/s, grows through the round
@@ -622,12 +624,18 @@ html[data-arcade-theme="light"] .modal-card{ background:linear-gradient(180deg,#
   }
   function spawnPrize(settled){
     const k = randomKind();
+    // the opening bin is dealt across the whole width; a refill mid-round drops in on the far
+    // right, away from the chute and the claw's delivery path on the left
+    const x = settled
+      ? BIN_X0 + k.r + Math.random()*(BIN_X1 - BIN_X0 - k.r*2)
+      : Math.min(BIN_X1 - k.r, REFILL_X0 + Math.random()*(BIN_X1 - REFILL_X0 - k.r));
     // the crown is on a timer: it is the only prize that can leave on its own
-    const x = BIN_X0 + k.r + Math.random()*(BIN_X1 - BIN_X0 - k.r*2);
     S.prizes.push({
       kind:k, x:x,
       y: settled ? FLOOR_Y - k.r - Math.random()*90 : GLASS_Y0 - k.r - Math.random()*50,
       vx:0, vy:0, spin:(Math.random()-0.5)*0.5, held:false, gone:false,
+      // a refill is not in play until it has landed, so the claw cannot snatch it out of the air
+      falling: !settled, vyPeak:0, fallT:0,
       life: k.crown ? CROWN_LIFE : 0
     });
   }
@@ -647,6 +655,15 @@ html[data-arcade-theme="light"] .modal-card{ background:linear-gradient(180deg,#
   function stepPrizes(h){
     for (const p of S.prizes){
       if (p.held) continue;
+      // a refill counts as landed the moment something stops it — the floor or the heap — which
+      // shows up as its fall speed dropping away from the peak it reached on the way down.
+      // the elapsed-time clause is only a safety net: nothing stays ungrabbable for ever
+      if (p.falling){
+        p.fallT += h;
+        if (p.vy > p.vyPeak) p.vyPeak = p.vy;
+        else if (p.vyPeak > 200 && p.vy < p.vyPeak * 0.5) p.falling = false;
+        if (p.fallT > 2.5) p.falling = false;
+      }
       p.vy += GRAV*h;
       p.vx *= DRAG;
       p.x  += p.vx*h;
@@ -705,11 +722,14 @@ html[data-arcade-theme="light"] .modal-card{ background:linear-gradient(180deg,#
   // ---------- the claw ----------
   // the prize the claw would close on: the highest one whose centre is inside the reach.
   // a prize still dropping in from above the glass is not in play yet — it would otherwise be
-  // picked as "highest" and the claw would try to descend to a point above its own parked height
+  // picked as "highest" and the claw would try to descend to a point above its own parked height.
+  // the same goes for one still falling inside the glass: being the highest loose body, it would
+  // steal the grab from whatever the player was actually aiming at, in mid-air, before they could
+  // even see what it was
   function candidate(x){
     let best = null;
     for (const p of S.prizes){
-      if (p.held || p.gone) continue;
+      if (p.held || p.gone || p.falling) continue;
       if (p.y < GLASS_Y0 + 10) continue;
       if (Math.abs(p.x - x) > reach()) continue;
       if (!best || p.y < best.y) best = p;
@@ -768,7 +788,8 @@ html[data-arcade-theme="light"] .modal-card{ background:linear-gradient(180deg,#
   // random order, and rains back down; whoever lands last ends up on top.
   function shufflePile(){
     const loose = [];
-    for (const q of S.prizes) if (!q.held && !q.gone) loose.push(q);
+    // the churn re-deals everything, so a refill still on its way down is dealt in with the rest
+    for (const q of S.prizes) if (!q.held && !q.gone){ q.falling = false; loose.push(q); }
     if (!loose.length) return;
     for (let i = loose.length - 1; i > 0; i--){          // a real permutation, not a hop
       const j = Math.floor(Math.random()*(i+1));
